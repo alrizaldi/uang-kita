@@ -21,34 +21,77 @@ export async function getFamilyTransactions(familyId: string): Promise<{ transac
       return { transactions: [], error: transactionsError };
     }
 
-    // Then fetch account and category names separately if needed
-    // This avoids the ambiguous relationship issue
-    const transactionIds = transactionsData.map(t => t.id);
-    
-    // For now, return the basic transaction data
-    // In a production app, you'd want to optimize this with proper joins
-    const transactions = transactionsData.map(item => ({
-      id: item.id,
-      family_id: item.family_id,
-      account_id: item.account_id,
-      member_id: item.member_id,
-      category_id: item.category_id,
-      goal_id: item.goal_id,
-      transaction_type: item.transaction_type,
-      amount: item.amount,
-      transaction_date: item.transaction_date,
-      description: item.description,
-      attachment_url: item.attachment_url,
-      created_by: item.created_by,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      // Related data will be populated later if needed
-      account_name: undefined,
-      category_name: undefined,
-      category_type: undefined
-    }));
+    // If we have transactions, fetch account and category details separately
+    if (transactionsData.length > 0) {
+      // Extract unique account and category IDs to fetch details in bulk
+      const accountIdSet = new Set<string>();
+      const categoryIdSet = new Set<string>();
+      
+      transactionsData.forEach(t => {
+        if (t.account_id) accountIdSet.add(t.account_id);
+        if (t.category_id) categoryIdSet.add(t.category_id);
+      });
+      
+      const accountIds = Array.from(accountIdSet);
+      const categoryIds = Array.from(categoryIdSet);
 
-    return { transactions, error: null };
+      // Fetch account details
+      let accountsMap: Record<string, any> = {};
+      if (accountIds.length > 0) {
+        const { data: accountsData, error: accountsError } = await supabase
+          .from('accounts')
+          .select('id, name')
+          .in('id', accountIds);
+        
+        if (!accountsError && accountsData) {
+          accountsData.forEach(acc => {
+            accountsMap[acc.id] = acc;
+          });
+        }
+      }
+
+      // Fetch category details
+      let categoriesMap: Record<string, any> = {};
+      if (categoryIds.length > 0) {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('id, name, type')
+          .in('id', categoryIds);
+        
+        if (!categoriesError && categoriesData) {
+          categoriesData.forEach(cat => {
+            categoriesMap[cat.id] = cat;
+          });
+        }
+      }
+
+      // Map the data to the Transaction type, incorporating related data
+      const transactions = transactionsData.map(item => ({
+        id: item.id,
+        family_id: item.family_id,
+        account_id: item.account_id,
+        member_id: item.member_id,
+        category_id: item.category_id,
+        goal_id: item.goal_id,
+        transaction_type: item.transaction_type,
+        amount: item.amount,
+        transaction_date: item.transaction_date,
+        description: item.description,
+        attachment_url: item.attachment_url,
+        created_by: item.created_by,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        // Adding related data
+        account_name: accountsMap[item.account_id]?.name || 'Unknown Account',
+        category_name: categoriesMap[item.category_id]?.name || 'Uncategorized',
+        category_type: categoriesMap[item.category_id]?.type
+      }));
+
+      return { transactions, error: null };
+    } else {
+      // If no transactions, return empty array
+      return { transactions: [], error: null };
+    }
   } catch (error) {
     console.error('Unexpected error in getFamilyTransactions:', error);
     return { transactions: [], error };
@@ -195,7 +238,53 @@ export async function createTransaction(
       return { transaction: null, error };
     }
 
-    const insertedTransaction = data as Transaction;
+    // Get account and category details for the newly created transaction
+    let accountDetails = null;
+    let categoryDetails = null;
+    
+    if (data.account_id) {
+      const { data: accountData, error: accountError } = await supabase
+        .from('accounts')
+        .select('name')
+        .eq('id', data.account_id)
+        .single();
+      
+      if (!accountError && accountData) {
+        accountDetails = accountData;
+      }
+    }
+    
+    if (data.category_id) {
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('categories')
+        .select('name, type')
+        .eq('id', data.category_id)
+        .single();
+      
+      if (!categoryError && categoryData) {
+        categoryDetails = categoryData;
+      }
+    }
+
+    const insertedTransaction = {
+      id: data.id,
+      family_id: data.family_id,
+      account_id: data.account_id,
+      member_id: data.member_id,
+      category_id: data.category_id,
+      goal_id: data.goal_id,
+      transaction_type: data.transaction_type,
+      amount: data.amount,
+      transaction_date: data.transaction_date,
+      description: data.description,
+      attachment_url: data.attachment_url,
+      created_by: data.created_by,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      account_name: accountDetails?.name || 'Unknown Account',
+      category_name: categoryDetails?.name || 'Uncategorized',
+      category_type: categoryDetails?.type
+    };
 
     // Update the account balance based on this transaction
     const balanceUpdateResult = await updateAccountBalance(insertedTransaction, true);
@@ -276,7 +365,53 @@ export async function updateTransaction(
       return { transaction: null, error };
     }
 
-    const updatedTransaction = data as Transaction;
+    // Get account and category details for the updated transaction
+    let accountDetails = null;
+    let categoryDetails = null;
+    
+    if (data.account_id) {
+      const { data: accountData, error: accountError } = await supabase
+        .from('accounts')
+        .select('name')
+        .eq('id', data.account_id)
+        .single();
+      
+      if (!accountError && accountData) {
+        accountDetails = accountData;
+      }
+    }
+    
+    if (data.category_id) {
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('categories')
+        .select('name, type')
+        .eq('id', data.category_id)
+        .single();
+      
+      if (!categoryError && categoryData) {
+        categoryDetails = categoryData;
+      }
+    }
+
+    const updatedTransaction = {
+      id: data.id,
+      family_id: data.family_id,
+      account_id: data.account_id,
+      member_id: data.member_id,
+      category_id: data.category_id,
+      goal_id: data.goal_id,
+      transaction_type: data.transaction_type,
+      amount: data.amount,
+      transaction_date: data.transaction_date,
+      description: data.description,
+      attachment_url: data.attachment_url,
+      created_by: data.created_by,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      account_name: accountDetails?.name || 'Unknown Account',
+      category_name: categoryDetails?.name || 'Uncategorized',
+      category_type: categoryDetails?.type
+    };
 
     // Apply the new transaction's effect on the account balance
     const newBalanceResult = await updateAccountBalance(updatedTransaction, true);
