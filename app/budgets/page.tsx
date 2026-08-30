@@ -7,7 +7,8 @@ import Layout from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { getFamilyBudgets, createBudget } from '@/lib/services/budgetService';
 import { getFamilyCategories } from '@/lib/services/categoryService';
-import { Budget, Category } from '@/types';
+import { getFamilyTransactions } from '@/lib/services/transactionService';
+import { Budget, Category, Transaction } from '@/types';
 import { PlusCircle } from 'lucide-react';
 import {
   Dialog,
@@ -27,6 +28,11 @@ interface ExtendedBudget extends Budget {
   remaining?: number;
 }
 
+interface ExtendedTransaction extends Transaction {
+  category_name?: string;
+  category_type?: string;
+}
+
 export default function BudgetsPage() {
   const { session, loading, family } = useSession();
   const router = useRouter();
@@ -34,6 +40,7 @@ export default function BudgetsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [newBudget, setNewBudget] = useState({
     category_id: '',
     amount: 0,
@@ -60,6 +67,7 @@ export default function BudgetsPage() {
     if (familyId) {
       loadBudgets();
       loadCategories();
+      loadTransactions();
     }
   }, [familyId]);
 
@@ -70,11 +78,17 @@ export default function BudgetsPage() {
       if (error) {
         console.error('Error loading budgets:', error);
       } else {
-        // Calculate spent and remaining amounts for each budget
+        // Calculate spent and remaining amounts for each budget based on transactions
         const budgetsWithCalculations = fetchedBudgets.map(budget => {
-          // In a real implementation, you would calculate the spent amount based on transactions
-          // For now, we'll use mock values
-          const spent = budget.amount * 0.6; // Mock spent amount
+          // Find transactions that match this budget's category
+          const relatedTransactions = transactions.filter(transaction => 
+            transaction.category_id === budget.category_id && 
+            transaction.transaction_type === 'expense'
+          );
+          
+          // Sum up the amounts of these transactions
+          const spent = relatedTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+          
           return {
             ...budget,
             spent,
@@ -105,6 +119,45 @@ export default function BudgetsPage() {
       setCategories([]);
     }
   };
+
+  const loadTransactions = async () => {
+    try {
+      const { transactions: fetchedTransactions, error } = await getFamilyTransactions(familyId!);
+      if (error) {
+        console.error('Error loading transactions:', error);
+        // Set empty array if there's an error
+        setTransactions([]);
+      } else {
+        setTransactions(fetchedTransactions);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      setTransactions([]);
+    }
+  };
+
+  // Update budgets when transactions change
+  useEffect(() => {
+    if (budgets.length > 0 && transactions.length > 0) {
+      const budgetsWithCalculations = budgets.map(budget => {
+        // Find transactions that match this budget's category
+        const relatedTransactions = transactions.filter(transaction => 
+          transaction.category_id === budget.category_id && 
+          transaction.transaction_type === 'expense'
+        );
+        
+        // Sum up the amounts of these transactions
+        const spent = relatedTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+        
+        return {
+          ...budget,
+          spent,
+          remaining: budget.amount - spent
+        };
+      });
+      setBudgets(budgetsWithCalculations);
+    }
+  }, [transactions]);
 
   const handleCreateBudget = async () => {
     setIsSubmitting(true);
