@@ -31,6 +31,7 @@ export async function getFamilyTransactions(familyId: string): Promise<{ transac
       account_id: item.account_id,
       member_id: item.member_id,
       category_id: item.category_id,
+      goal_id: item.goal_id, // Added goal_id field
       transaction_type: item.transaction_type,
       amount: item.amount,
       transaction_date: item.transaction_date,
@@ -101,6 +102,61 @@ async function updateAccountBalance(transaction: Transaction, isAddition: boolea
   }
 }
 
+// Helper function to update goal progress based on transaction
+async function updateGoalProgress(transaction: Transaction, isAddition: boolean) {
+  try {
+    // If the transaction doesn't have a goal_id, nothing to update
+    if (!transaction.goal_id) {
+      return { error: null };
+    }
+
+    // Get the current goal to update its progress
+    const { data: goal, error: goalError } = await supabase
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
+      .select('current_amount')
+      .eq('id', transaction.goal_id)
+      .single();
+
+    if (goalError) {
+      console.error('Error fetching goal to update progress:', goalError);
+      return { error: goalError };
+    }
+
+    // Calculate the new progress based on transaction type
+    // For goal contributions, we consider them as positive additions
+    let amountToAdjust = transaction.amount;
+    if (transaction.transaction_type === 'expense') {
+      // If it's an expense transaction for a goal, add the amount to progress
+      amountToAdjust = isAddition ? transaction.amount : -transaction.amount;
+    } else if (transaction.transaction_type === 'income') {
+      // If it's an income transaction for a goal, add the amount to progress
+      amountToAdjust = isAddition ? transaction.amount : -transaction.amount;
+    } else if (transaction.transaction_type === 'transfer') {
+      // For transfers, we might not want to affect goal progress
+      return { error: null };
+    }
+
+    // Calculate new progress
+    const newProgress = Math.max(0, goal.current_amount + amountToAdjust);
+
+    // Update the goal progress
+    const { error: updateError } = await supabase
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
+      .update({ current_amount: newProgress })
+      .eq('id', transaction.goal_id);
+
+    if (updateError) {
+      console.error('Error updating goal progress:', updateError);
+      return { error: updateError };
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('Unexpected error in updateGoalProgress:', error);
+    return { error };
+  }
+}
+
 // Create a new transaction
 export async function createTransaction(
   transactionData: Omit<Transaction, 'id' | 'family_id' | 'created_at' | 'updated_at'>,
@@ -141,6 +197,13 @@ export async function createTransaction(
       return { transaction: null, error: balanceUpdateResult.error };
     }
 
+    // Update the goal progress if this transaction is linked to a goal
+    const goalUpdateResult = await updateGoalProgress(insertedTransaction, true);
+    if (goalUpdateResult.error) {
+      console.error('Error updating goal progress after creating transaction:', goalUpdateResult.error);
+      // Note: We don't rollback the transaction because the account update already happened
+    }
+
     return { transaction: insertedTransaction, error: null };
   } catch (error) {
     console.error('Unexpected error in createTransaction:', error);
@@ -155,7 +218,7 @@ export async function updateTransaction(
   familyId: string
 ): Promise<{ transaction: Transaction | null; error: any }> {
   try {
-    // First, get the original transaction to reverse its effect on the account balance
+    // First, get the original transaction to reverse its effects
     const { data: originalTransaction, error: fetchError } = await supabase
       .from('transactions')
       .select('*')
@@ -175,6 +238,13 @@ export async function updateTransaction(
       return { transaction: null, error: reverseBalanceResult.error };
     }
 
+    // Reverse the original transaction's effect on the goal progress
+    const reverseGoalResult = await updateGoalProgress(originalTransaction as Transaction, false);
+    if (reverseGoalResult.error) {
+      console.error('Error reversing original transaction effect on goal progress:', reverseGoalResult.error);
+      return { transaction: null, error: reverseGoalResult.error };
+    }
+
     // Apply the updates
     const { data, error } = await supabase
       .from('transactions')
@@ -186,8 +256,9 @@ export async function updateTransaction(
 
     if (error) {
       console.error('Error updating transaction:', error);
-      // Try to restore the original balance since the update failed
+      // Try to restore the original balance and goal progress since the update failed
       await updateAccountBalance(originalTransaction as Transaction, true);
+      await updateGoalProgress(originalTransaction as Transaction, true);
       return { transaction: null, error };
     }
 
@@ -201,6 +272,14 @@ export async function updateTransaction(
       return { transaction: null, error: newBalanceResult.error };
     }
 
+    // Apply the new transaction's effect on the goal progress
+    const newGoalResult = await updateGoalProgress(updatedTransaction, true);
+    if (newGoalResult.error) {
+      console.error('Error applying updated transaction effect on goal progress:', newGoalResult.error);
+      // Optionally, we could revert the update here
+      return { transaction: null, error: newGoalResult.error };
+    }
+
     return { transaction: updatedTransaction, error: null };
   } catch (error) {
     console.error('Unexpected error in updateTransaction:', error);
@@ -211,7 +290,7 @@ export async function updateTransaction(
 // Delete a transaction
 export async function deleteTransaction(transactionId: string, familyId: string): Promise<{ error: any }> {
   try {
-    // First, get the transaction to reverse its effect on the account balance
+    // First, get the transaction to reverse its effects
     const { data: transaction, error: fetchError } = await supabase
       .from('transactions')
       .select('*')
@@ -231,6 +310,13 @@ export async function deleteTransaction(transactionId: string, familyId: string)
       return { error: balanceUpdateResult.error };
     }
 
+    // Reverse the transaction's effect on the goal progress
+    const goalUpdateResult = await updateGoalProgress(transaction as Transaction, false);
+    if (goalUpdateResult.error) {
+      console.error('Error reversing transaction effect on goal progress:', goalUpdateResult.error);
+      return { error: goalUpdateResult.error };
+    }
+
     // Delete the transaction
     const { error } = await supabase
       .from('transactions')
@@ -240,8 +326,9 @@ export async function deleteTransaction(transactionId: string, familyId: string)
 
     if (error) {
       console.error('Error deleting transaction:', error);
-      // Try to restore the balance since the deletion failed
+      // Try to restore the balance and goal progress since the deletion failed
       await updateAccountBalance(transaction as Transaction, true);
+      await updateGoalProgress(transaction as Transaction, true);
       return { error };
     }
 

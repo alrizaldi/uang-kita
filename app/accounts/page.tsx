@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/context/SessionContext';
-import Layout from '@/components/layout';
-import { Button } from '@/components/ui/button';
-import { getFamilyAccounts } from '@/lib/services/accountService';
-import { Account } from '@/types';
-import { PlusCircle } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/context/SessionContext";
+import Layout from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { getFamilyAccounts } from "@/lib/services/accountService";
+import { Account } from "@/types";
+import { PlusCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createAccount } from '@/lib/services/accountService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createAccount } from "@/lib/services/accountService";
 
 export default function AccountsPage() {
   const { session, loading, family } = useSession();
@@ -28,18 +34,18 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [newAccount, setNewAccount] = useState({
-    name: '',
-    type: 'checking',
-    institution: '',
+    name: "",
+    type: "checking",
+    institution: "",
     opening_balance: 0,
-    currency: 'IDR'
+    currency: "IDR",
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace('/auth');
+      router.replace("/auth");
     }
   }, [session, loading, router]);
 
@@ -58,15 +64,17 @@ export default function AccountsPage() {
   const loadAccounts = async () => {
     setIsLoading(true);
     try {
-      const { accounts: fetchedAccounts, error } = await getFamilyAccounts(familyId!);
+      const { accounts: fetchedAccounts, error } = await getFamilyAccounts(
+        familyId!,
+      );
       if (error) {
-        console.error('Error loading accounts:', error);
+        console.error("Error loading accounts:", error);
         // Handle error appropriately, maybe show an error message to the user
       } else {
         setAccounts(fetchedAccounts);
       }
     } catch (error) {
-      console.error('Error loading accounts:', error);
+      console.error("Error loading accounts:", error);
     } finally {
       setIsLoading(false);
     }
@@ -76,34 +84,37 @@ export default function AccountsPage() {
     setIsSubmitting(true);
     try {
       if (!familyId) {
-        throw new Error('No family ID available');
+        throw new Error("No family ID available");
       }
-      
-      const { account: createdAccount, error } = await createAccount({
-        name: newAccount.name,
-        type: newAccount.type,
-        institution: newAccount.institution,
-        opening_balance: Number(newAccount.opening_balance),
-        currency: newAccount.currency,
-        is_active: true,
-      }, familyId);
-      
+
+      const { account: createdAccount, error } = await createAccount(
+        {
+          name: newAccount.name,
+          type: newAccount.type,
+          institution: newAccount.institution,
+          opening_balance: Number(newAccount.opening_balance),
+          currency: newAccount.currency,
+          is_active: true,
+        },
+        familyId,
+      );
+
       if (error) {
-        console.error('Error creating account:', error);
+        console.error("Error creating account:", error);
         // Handle error appropriately, maybe show an error message to the user
       } else if (createdAccount) {
         setAccounts([createdAccount, ...accounts]);
         setNewAccount({
-          name: '',
-          type: 'checking',
-          institution: '',
+          name: "",
+          type: "checking",
+          institution: "",
           opening_balance: 0,
-          currency: 'IDR'
+          currency: "IDR",
         });
         setShowAddDialog(false);
       }
     } catch (error) {
-      console.error('Error creating account:', error);
+      console.error("Error creating account:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +138,7 @@ export default function AccountsPage() {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+          <h1 className="text-2xl font-bold text-gray-900 px-4">Accounts</h1>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
               <Button className="flex items-center">
@@ -149,7 +160,9 @@ export default function AccountsPage() {
                   <Input
                     id="name"
                     value={newAccount.name}
-                    onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
+                    onChange={(e) =>
+                      setNewAccount({ ...newAccount, name: e.target.value })
+                    }
                     className="col-span-3"
                   />
                 </div>
@@ -157,7 +170,12 @@ export default function AccountsPage() {
                   <Label htmlFor="type" className="text-right">
                     Type
                   </Label>
-                  <Select value={newAccount.type} onValueChange={(value) => setNewAccount({...newAccount, type: value})}>
+                  <Select
+                    value={newAccount.type}
+                    onValueChange={(value) =>
+                      setNewAccount({ ...newAccount, type: value })
+                    }
+                  >
                     <SelectTrigger className="col-span-3">
                       <SelectValue />
                     </SelectTrigger>
@@ -176,7 +194,12 @@ export default function AccountsPage() {
                   <Input
                     id="institution"
                     value={newAccount.institution}
-                    onChange={(e) => setNewAccount({...newAccount, institution: e.target.value})}
+                    onChange={(e) =>
+                      setNewAccount({
+                        ...newAccount,
+                        institution: e.target.value,
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
@@ -188,17 +211,22 @@ export default function AccountsPage() {
                     id="openingBalance"
                     type="number"
                     value={newAccount.opening_balance}
-                    onChange={(e) => setNewAccount({...newAccount, opening_balance: Number(e.target.value)})}
+                    onChange={(e) =>
+                      setNewAccount({
+                        ...newAccount,
+                        opening_balance: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
               </div>
-              <Button 
-                onClick={handleCreateAccount} 
+              <Button
+                onClick={handleCreateAccount}
                 disabled={isSubmitting}
                 className="w-full"
               >
-                {isSubmitting ? 'Creating...' : 'Create Account'}
+                {isSubmitting ? "Creating..." : "Create Account"}
               </Button>
             </DialogContent>
           </Dialog>
@@ -211,26 +239,42 @@ export default function AccountsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {accounts.map((account) => (
-              <div key={account.id} className="bg-white overflow-hidden shadow rounded-lg">
+              <div
+                key={account.id}
+                className="bg-white overflow-hidden shadow rounded-lg"
+              >
                 <div className="px-4 py-5 sm:p-6">
                   <div className="flex items-center">
                     <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">{account.name}</h3>
-                      <p className="text-sm text-gray-500">{account.institution} • {account.type}</p>
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {account.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {account.institution} • {account.type}
+                      </p>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4">
-                    <p className={`text-2xl font-bold ${account.opening_balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                      {account.currency} {Math.abs(account.opening_balance).toLocaleString('id-ID')}
+                    <p
+                      className={`text-2xl font-bold ${account.opening_balance >= 0 ? "text-gray-900" : "text-red-600"}`}
+                    >
+                      {account.currency}{" "}
+                      {Math.abs(account.opening_balance).toLocaleString(
+                        "id-ID",
+                      )}
                     </p>
                   </div>
-                  
+
                   <div className="mt-4">
-                    <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${
-                      account.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {account.is_active ? 'Active' : 'Inactive'}
+                    <span
+                      className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${
+                        account.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {account.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
                 </div>

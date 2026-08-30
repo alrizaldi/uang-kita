@@ -48,6 +48,7 @@ export type Transaction = {
   account_id: string;
   member_id?: string;
   category_id?: string;
+  goal_id?: string; // Added for linking transactions to goals
   transaction_type: string; // 'income', 'expense', 'transfer'
   amount: number;
   transaction_date: string; // Date string in YYYY-MM-DD format

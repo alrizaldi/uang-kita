@@ -9,7 +9,7 @@ import { FinancialGoal } from '@/types';
 export async function getFamilyGoals(familyId: string): Promise<{ goals: FinancialGoal[]; error: any }> {
   try {
     const { data, error } = await supabase
-      .from('financial_goals')
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
       .select('*')
       .eq('family_id', familyId)
       .order('created_at', { ascending: false });
@@ -39,7 +39,7 @@ export async function createGoal(
     };
     
     const { data, error } = await supabase
-      .from('financial_goals')
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
       .insert([goalWithFamilyId])
       .select()
       .single();
@@ -60,7 +60,7 @@ export async function createGoal(
 export async function updateGoal(goalId: string, updates: Partial<Omit<FinancialGoal, 'id' | 'family_id' | 'created_at' | 'updated_at'>>): Promise<{ goal: FinancialGoal | null; error: any }> {
   try {
     const { data, error } = await supabase
-      .from('financial_goals')
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
       .update(updates)
       .eq('id', goalId)
       .select()
@@ -82,7 +82,7 @@ export async function updateGoal(goalId: string, updates: Partial<Omit<Financial
 export async function deleteGoal(goalId: string): Promise<{ error: any }> {
   try {
     const { error } = await supabase
-      .from('financial_goals')
+      .from('goals')  // Changed from 'financial_goals' to 'goals'
       .delete()
       .eq('id', goalId);
 

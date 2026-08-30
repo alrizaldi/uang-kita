@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/context/SessionContext';
-import Layout from '@/components/layout';
-import { Button } from '@/components/ui/button';
-import { getFamilyBudgets, createBudget } from '@/lib/services/budgetService';
-import { getFamilyCategories } from '@/lib/services/categoryService';
-import { getFamilyTransactions } from '@/lib/services/transactionService';
-import { Budget, Category, Transaction } from '@/types';
-import { PlusCircle } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/context/SessionContext";
+import Layout from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { getFamilyBudgets, createBudget } from "@/lib/services/budgetService";
+import { getFamilyCategories } from "@/lib/services/categoryService";
+import { getFamilyTransactions } from "@/lib/services/transactionService";
+import { Budget, Category, Transaction } from "@/types";
+import { PlusCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ExtendedBudget extends Budget {
   category_name?: string;
@@ -42,18 +48,18 @@ export default function BudgetsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [newBudget, setNewBudget] = useState({
-    category_id: '',
+    category_id: "",
     amount: 0,
-    period_type: 'MONTHLY',
-    period_start: '',
-    period_end: ''
+    period_type: "MONTHLY",
+    period_start: "",
+    period_end: "",
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace('/auth');
+      router.replace("/auth");
     }
   }, [session, loading, router]);
 
@@ -74,31 +80,37 @@ export default function BudgetsPage() {
   const loadBudgets = async () => {
     setIsLoading(true);
     try {
-      const { budgets: fetchedBudgets, error } = await getFamilyBudgets(familyId!);
+      const { budgets: fetchedBudgets, error } = await getFamilyBudgets(
+        familyId!,
+      );
       if (error) {
-        console.error('Error loading budgets:', error);
+        console.error("Error loading budgets:", error);
       } else {
         // Calculate spent and remaining amounts for each budget based on transactions
-        const budgetsWithCalculations = fetchedBudgets.map(budget => {
+        const budgetsWithCalculations = fetchedBudgets.map((budget) => {
           // Find transactions that match this budget's category
-          const relatedTransactions = transactions.filter(transaction => 
-            transaction.category_id === budget.category_id && 
-            transaction.transaction_type === 'expense'
+          const relatedTransactions = transactions.filter(
+            (transaction) =>
+              transaction.category_id === budget.category_id &&
+              transaction.transaction_type === "expense",
           );
-          
+
           // Sum up the amounts of these transactions
-          const spent = relatedTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-          
+          const spent = relatedTransactions.reduce(
+            (sum, transaction) => sum + Math.abs(transaction.amount),
+            0,
+          );
+
           return {
             ...budget,
             spent,
-            remaining: budget.amount - spent
+            remaining: budget.amount - spent,
           };
         });
         setBudgets(budgetsWithCalculations);
       }
     } catch (error) {
-      console.error('Error loading budgets:', error);
+      console.error("Error loading budgets:", error);
     } finally {
       setIsLoading(false);
     }
@@ -106,32 +118,34 @@ export default function BudgetsPage() {
 
   const loadCategories = async () => {
     try {
-      const { categories: fetchedCategories, error } = await getFamilyCategories(familyId!);
+      const { categories: fetchedCategories, error } =
+        await getFamilyCategories(familyId!);
       if (error) {
-        console.error('Error loading categories:', error);
+        console.error("Error loading categories:", error);
         // Set empty array if there's an error
         setCategories([]);
       } else {
         setCategories(fetchedCategories);
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
+      console.error("Error loading categories:", error);
       setCategories([]);
     }
   };
 
   const loadTransactions = async () => {
     try {
-      const { transactions: fetchedTransactions, error } = await getFamilyTransactions(familyId!);
+      const { transactions: fetchedTransactions, error } =
+        await getFamilyTransactions(familyId!);
       if (error) {
-        console.error('Error loading transactions:', error);
+        console.error("Error loading transactions:", error);
         // Set empty array if there's an error
         setTransactions([]);
       } else {
         setTransactions(fetchedTransactions);
       }
     } catch (error) {
-      console.error('Error loading transactions:', error);
+      console.error("Error loading transactions:", error);
       setTransactions([]);
     }
   };
@@ -139,20 +153,24 @@ export default function BudgetsPage() {
   // Update budgets when transactions change
   useEffect(() => {
     if (budgets.length > 0 && transactions.length > 0) {
-      const budgetsWithCalculations = budgets.map(budget => {
+      const budgetsWithCalculations = budgets.map((budget) => {
         // Find transactions that match this budget's category
-        const relatedTransactions = transactions.filter(transaction => 
-          transaction.category_id === budget.category_id && 
-          transaction.transaction_type === 'expense'
+        const relatedTransactions = transactions.filter(
+          (transaction) =>
+            transaction.category_id === budget.category_id &&
+            transaction.transaction_type === "expense",
         );
-        
+
         // Sum up the amounts of these transactions
-        const spent = relatedTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-        
+        const spent = relatedTransactions.reduce(
+          (sum, transaction) => sum + Math.abs(transaction.amount),
+          0,
+        );
+
         return {
           ...budget,
           spent,
-          remaining: budget.amount - spent
+          remaining: budget.amount - spent,
         };
       });
       setBudgets(budgetsWithCalculations);
@@ -163,71 +181,82 @@ export default function BudgetsPage() {
     setIsSubmitting(true);
     try {
       if (!familyId) {
-        throw new Error('No family ID available');
+        throw new Error("No family ID available");
       }
-      
+
       // Prepare the budget data with proper dates for the selected period
       let periodStart: string, periodEnd: string;
       const today = new Date();
-      
+
       switch (newBudget.period_type) {
-        case 'DAILY':
-          periodStart = today.toISOString().split('T')[0];
-          periodEnd = today.toISOString().split('T')[0];
+        case "DAILY":
+          periodStart = today.toISOString().split("T")[0];
+          periodEnd = today.toISOString().split("T")[0];
           break;
-        case 'WEEKLY':
+        case "WEEKLY":
           const weekStart = new Date(today);
           weekStart.setDate(today.getDate() - today.getDay());
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekStart.getDate() + 6);
-          periodStart = weekStart.toISOString().split('T')[0];
-          periodEnd = weekEnd.toISOString().split('T')[0];
+          periodStart = weekStart.toISOString().split("T")[0];
+          periodEnd = weekEnd.toISOString().split("T")[0];
           break;
-        case 'MONTHLY':
-          periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-          periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+        case "MONTHLY":
+          periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
+            .toISOString()
+            .split("T")[0];
+          periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+            .toISOString()
+            .split("T")[0];
           break;
-        case 'YEARLY':
-          periodStart = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-          periodEnd = new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0];
+        case "YEARLY":
+          periodStart = new Date(today.getFullYear(), 0, 1)
+            .toISOString()
+            .split("T")[0];
+          periodEnd = new Date(today.getFullYear(), 11, 31)
+            .toISOString()
+            .split("T")[0];
           break;
         default:
-          periodStart = today.toISOString().split('T')[0];
-          periodEnd = today.toISOString().split('T')[0];
+          periodStart = today.toISOString().split("T")[0];
+          periodEnd = today.toISOString().split("T")[0];
       }
-      
+
       const budgetData = {
         category_id: newBudget.category_id,
         amount: Number(newBudget.amount),
         period_type: newBudget.period_type,
         period_start: periodStart,
-        period_end: periodEnd
+        period_end: periodEnd,
       };
-      
-      const { budget: createdBudget, error } = await createBudget(budgetData, familyId);
-      
+
+      const { budget: createdBudget, error } = await createBudget(
+        budgetData,
+        familyId,
+      );
+
       if (error) {
-        console.error('Error creating budget:', error);
+        console.error("Error creating budget:", error);
       } else if (createdBudget) {
         // Add the calculated values to the new budget
         const newBudgetWithCalculations = {
           ...createdBudget,
           spent: 0, // New budget starts with 0 spent
-          remaining: Number(newBudget.amount)
+          remaining: Number(newBudget.amount),
         };
-        
+
         setBudgets([newBudgetWithCalculations, ...budgets]);
         setNewBudget({
-          category_id: '',
+          category_id: "",
           amount: 0,
-          period_type: 'MONTHLY',
-          period_start: '',
-          period_end: ''
+          period_type: "MONTHLY",
+          period_start: "",
+          period_end: "",
         });
         setShowAddDialog(false);
       }
     } catch (error) {
-      console.error('Error creating budget:', error);
+      console.error("Error creating budget:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -251,7 +280,7 @@ export default function BudgetsPage() {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Budgets</h1>
+          <h1 className="text-2xl font-bold text-gray-900 px-4">Budgets</h1>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
               <Button className="flex items-center">
@@ -270,13 +299,20 @@ export default function BudgetsPage() {
                   <Label htmlFor="category" className="text-right">
                     Category
                   </Label>
-                  <Select value={newBudget.category_id} onValueChange={(value) => setNewBudget({...newBudget, category_id: value})}>
+                  <Select
+                    value={newBudget.category_id}
+                    onValueChange={(value) =>
+                      setNewBudget({ ...newBudget, category_id: value })
+                    }
+                  >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -289,7 +325,12 @@ export default function BudgetsPage() {
                     id="amount"
                     type="number"
                     value={newBudget.amount}
-                    onChange={(e) => setNewBudget({...newBudget, amount: Number(e.target.value)})}
+                    onChange={(e) =>
+                      setNewBudget({
+                        ...newBudget,
+                        amount: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
@@ -297,7 +338,12 @@ export default function BudgetsPage() {
                   <Label htmlFor="period" className="text-right">
                     Period
                   </Label>
-                  <Select value={newBudget.period_type} onValueChange={(value) => setNewBudget({...newBudget, period_type: value})}>
+                  <Select
+                    value={newBudget.period_type}
+                    onValueChange={(value) =>
+                      setNewBudget({ ...newBudget, period_type: value })
+                    }
+                  >
                     <SelectTrigger className="col-span-3">
                       <SelectValue />
                     </SelectTrigger>
@@ -310,12 +356,12 @@ export default function BudgetsPage() {
                   </Select>
                 </div>
               </div>
-              <Button 
-                onClick={handleCreateBudget} 
+              <Button
+                onClick={handleCreateBudget}
                 disabled={isSubmitting}
                 className="w-full"
               >
-                {isSubmitting ? 'Creating...' : 'Create Budget'}
+                {isSubmitting ? "Creating..." : "Create Budget"}
               </Button>
             </DialogContent>
           </Dialog>
@@ -329,37 +375,45 @@ export default function BudgetsPage() {
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-200">
               {budgets.map((budget) => {
-                const percentage = Math.min(100, (budget.spent || 0) / budget.amount * 100);
+                const percentage = Math.min(
+                  100,
+                  ((budget.spent || 0) / budget.amount) * 100,
+                );
                 return (
                   <li key={budget.id}>
                     <div className="px-4 py-4 sm:px-6">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-indigo-600 truncate">
-                          {budget.category_name || 'Unknown Category'}
+                          {budget.category_name || "Unknown Category"}
                         </p>
                         <div className="ml-2 flex-shrink-0 flex">
                           <p className="text-sm text-gray-500">
-                            Rp {(budget.spent || 0).toLocaleString('id-ID')} / Rp {budget.amount.toLocaleString('id-ID')}
+                            Rp {(budget.spent || 0).toLocaleString("id-ID")} /
+                            Rp {budget.amount.toLocaleString("id-ID")}
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="mt-2">
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full ${
-                              percentage > 90 ? 'bg-red-600' : 
-                              percentage > 75 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`} 
+                              percentage > 90
+                                ? "bg-red-600"
+                                : percentage > 75
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
+                            }`}
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
                       </div>
-                      
+
                       <div className="mt-2 sm:flex sm:justify-between">
                         <div className="sm:flex">
                           <p className="flex items-center text-sm text-gray-500">
-                            Remaining: Rp {(budget.remaining || 0).toLocaleString('id-ID')}
+                            Remaining: Rp{" "}
+                            {(budget.remaining || 0).toLocaleString("id-ID")}
                           </p>
                         </div>
                         <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">

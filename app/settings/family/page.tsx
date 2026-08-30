@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/context/SessionContext';
-import Layout from '@/components/layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { updateFamily } from '@/lib/services/familyService';
-import { Family } from '@/types';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/context/SessionContext";
+import Layout from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { updateFamily } from "@/lib/services/familyService";
+import { Family } from "@/types";
 
 export default function FamilySettingsPage() {
   const { session, loading, family, refreshFamily } = useSession();
@@ -16,13 +16,13 @@ export default function FamilySettingsPage() {
   const [familyData, setFamilyData] = useState<Family | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: ''
+    name: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace('/auth');
+      router.replace("/auth");
     }
   }, [session, loading, router]);
 
@@ -47,28 +47,31 @@ export default function FamilySettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       if (!familyData) {
-        throw new Error('No family data available');
+        throw new Error("No family data available");
       }
-      
-      const { family: updatedFamily, error } = await updateFamily(familyData.id, {
-        name: editForm.name
-      });
-      
+
+      const { family: updatedFamily, error } = await updateFamily(
+        familyData.id,
+        {
+          name: editForm.name,
+        },
+      );
+
       if (error) {
-        console.error('Error updating family:', error);
+        console.error("Error updating family:", error);
       } else if (updatedFamily) {
         // Update the local state
         setFamilyData(updatedFamily);
         // Refresh the family data in the context
         await refreshFamily();
       }
-      
+
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating family:', error);
+      console.error("Error updating family:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,9 +95,11 @@ export default function FamilySettingsPage() {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Family Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900 px-4">
+            Family Settings
+          </h1>
         </div>
-        
+
         <div className="bg-white shadow overflow-hidden sm:rounded-md max-w-2xl">
           <div className="px-4 py-5 sm:p-6">
             {isEditing ? (
@@ -104,20 +109,19 @@ export default function FamilySettingsPage() {
                   <Input
                     id="familyName"
                     value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
                     placeholder="Enter family name"
                   />
                 </div>
-                
+
                 <div className="flex space-x-2">
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={handleCancel}
                     disabled={isSubmitting}
@@ -129,13 +133,15 @@ export default function FamilySettingsPage() {
             ) : (
               <div>
                 <div className="mb-4">
-                  <Label className="text-sm font-medium text-gray-700">Family Name</Label>
-                  <p className="mt-1 text-lg text-gray-900">{familyData?.name}</p>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Family Name
+                  </Label>
+                  <p className="mt-1 text-lg text-gray-900">
+                    {familyData?.name}
+                  </p>
                 </div>
-                
-                <Button onClick={handleEditClick}>
-                  Edit Family
-                </Button>
+
+                <Button onClick={handleEditClick}>Edit Family</Button>
               </div>
             )}
           </div>
