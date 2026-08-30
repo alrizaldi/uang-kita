@@ -123,7 +123,6 @@ export default function TransactionsPage() {
       // Prepare data object for the service call
       // Ensure optional fields like member_id and category_id are undefined if not set, not null
       const transactionData = {
-        family_id: family.id,
         account_id: newTransaction.account_id,
         member_id: undefined, // Use undefined instead of null
         category_id: newTransaction.category_id, // This is a string from the form, will be sent if selected
@@ -133,7 +132,7 @@ export default function TransactionsPage() {
         description: newTransaction.description,
       };
 
-      const { transaction: newDbTransaction, error } = await createTransaction(transactionData);
+      const { transaction: newDbTransaction, error } = await createTransaction(transactionData, family.id);
       if (error) {
         console.error('Error creating transaction in DB:', error);
         // TODO: Show user-friendly error message

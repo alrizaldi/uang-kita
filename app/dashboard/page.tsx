@@ -80,7 +80,7 @@ export default function DashboardPage() {
           );
           
           // Sum up the amounts of these transactions
-          const spent = relatedTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+          const spent = relatedTransactions.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
           
           return {
             ...budget,
