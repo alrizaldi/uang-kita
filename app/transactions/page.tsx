@@ -24,11 +24,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+interface ExtendedTransaction extends Transaction {
+  account_name?: string;
+  category_name?: string;
+  category_type?: string;
+}
+
 export default function TransactionsPage() {
   const { session, loading, family } = useSession(); // Destructure family from session context
   const router = useRouter();
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [allTransactions, setAllTransactions] = useState<any[]>([]); // Store all transactions for filtering
+  const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<ExtendedTransaction[]>([]); // Store all transactions for filtering
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
@@ -39,7 +45,7 @@ export default function TransactionsPage() {
     transaction_type: 'expense' as 'income' | 'expense',
     category_id: '',
     account_id: '',
-    goal_id: '',
+    goal_id: '', // Keep this field for UI purposes
     date: new Date().toISOString().split('T')[0]
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -68,19 +74,14 @@ export default function TransactionsPage() {
         setAllTransactions([]);
       } else {
         // Map the fetched data to the format expected by the UI
-        // Cast 't' to 'any' to access properties added by the Supabase join query
+        // Add account and category names by looking them up from the loaded lists
         const mappedTransactions = dbTransactions.map((t: any) => ({
-          id: t.id,
-          date: t.transaction_date,
-          description: t.description || 'No description',
-          category: t.categories?.name || 'Uncategorized', // Safe access on cast 'any' type
-          category_id: t.category_id,
-          goal_id: t.goal_id,
-          amount: t.transaction_type === 'income' ? t.amount : -t.amount,
-          type: t.transaction_type,
-          account: t.accounts?.name || 'Unknown Account', // Safe access on cast 'any' type
-          account_id: t.account_id
+          ...t,
+          account_name: accounts.find(a => a.id === t.account_id)?.name || 'Unknown Account',
+          category_name: categories.find(c => c.id === t.category_id)?.name || 'Uncategorized',
+          category_type: categories.find(c => c.id === t.category_id)?.type
         }));
+        
         setAllTransactions(mappedTransactions);
         setTransactions(mappedTransactions);
       }
@@ -124,6 +125,11 @@ export default function TransactionsPage() {
       } else {
         setGoals(goalsRes.goals);
       }
+      
+      // After loading related data, reload transactions to map names properly
+      if (family.id) {
+        loadTransactions();
+      }
     } catch (error) {
       console.error('Error loading related data:', error);
     }
@@ -139,7 +145,6 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (family?.id) {
       // Load all necessary data when family ID becomes available
-      loadTransactions();
       loadRelatedData();
     }
   }, [family?.id]); // Dependency array ensures effect runs when family.id changes
@@ -150,19 +155,19 @@ export default function TransactionsPage() {
     
     // Apply date range filter
     if (filters.startDate) {
-      filtered = filtered.filter(t => new Date(t.date) >= new Date(filters.startDate));
+      filtered = filtered.filter(t => new Date(t.transaction_date) >= new Date(filters.startDate));
     }
     if (filters.endDate) {
-      filtered = filtered.filter(t => new Date(t.date) <= new Date(filters.endDate));
+      filtered = filtered.filter(t => new Date(t.transaction_date) <= new Date(filters.endDate));
     }
     
     // Apply search term filter
     if (filters.searchTerm) {
       const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(t => 
-        t.description.toLowerCase().includes(term) ||
-        t.category.toLowerCase().includes(term) ||
-        t.account.toLowerCase().includes(term) ||
+        t.description?.toLowerCase().includes(term) ||
+        t.category_name?.toLowerCase().includes(term) ||
+        t.account_name?.toLowerCase().includes(term) ||
         t.amount.toString().includes(term)
       );
     }
@@ -179,11 +184,12 @@ export default function TransactionsPage() {
     
     // Apply type filter
     if (filters.typeFilter) {
-      filtered = filtered.filter(t => t.type === filters.typeFilter);
+      filtered = filtered.filter(t => t.transaction_type === filters.typeFilter);
     }
     
     // Apply goal filter
     if (filters.goalFilter) {
+      // Only filter if goal_id exists in the transaction data
       filtered = filtered.filter(t => t.goal_id === filters.goalFilter);
     }
     
@@ -197,17 +203,22 @@ export default function TransactionsPage() {
     try {
       // Prepare data object for the service call
       // Ensure optional fields like member_id and goal_id are undefined if not set, not null
-      const transactionData = {
+      const transactionData: any = {
         account_id: newTransaction.account_id,
         member_id: undefined, // Use undefined instead of null
         category_id: newTransaction.category_id, // This is a string from the form, will be sent if selected
-        goal_id: newTransaction.goal_id || undefined, // Link to goal if selected
         transaction_type: newTransaction.transaction_type,
         amount: Math.abs(Number(newTransaction.amount)),
         transaction_date: newTransaction.date,
         description: newTransaction.description,
         attachment_url: undefined
       };
+
+      // Add goal_id if it's selected
+      // This will only work if the database column exists
+      if (newTransaction.goal_id) {
+        transactionData.goal_id = newTransaction.goal_id;
+      }
 
       const { transaction: newDbTransaction, error } = await createTransaction(transactionData, family.id);
       if (error) {
@@ -558,19 +569,19 @@ export default function TransactionsPage() {
                           {transaction.description}
                         </p>
                         <div className="ml-2 flex-shrink-0 flex">
-                          <p className={`text-sm ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'} font-semibold`}>
-                            {transaction.type === 'income' ? '+' : '-'}Rp {Math.abs(transaction.amount).toLocaleString('id-ID')}
+                          <p className={`text-sm ${transaction.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'} font-semibold`}>
+                            {transaction.transaction_type === 'income' ? '+' : '-'}Rp {Math.abs(transaction.amount).toLocaleString('id-ID')}
                           </p>
                         </div>
                       </div>
                       <div className="mt-2 sm:flex sm:justify-between">
                         <div className="sm:flex">
                           <p className="flex items-center text-sm text-gray-500">
-                            {transaction.date} • {transaction.category}
+                            {transaction.transaction_date} • {transaction.category_name}
                           </p>
                         </div>
                         <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                          <p>{transaction.account}</p>
+                          <p>{transaction.account_name}</p>
                         </div>
                       </div>
                     </div>
