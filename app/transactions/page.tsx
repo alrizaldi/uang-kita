@@ -85,10 +85,21 @@ export default function TransactionsPage() {
         setTransactions([]);
         setAllTransactions([]);
       } else {
-        // The transaction service now provides account and category names directly
-        // so we don't need to map them client-side anymore
-        setAllTransactions(dbTransactions);
-        setTransactions(dbTransactions);
+        // Map the fetched data to the format expected by the UI
+        // Add account and category names by looking them up from the loaded lists
+        const mappedTransactions = dbTransactions.map((t: any) => ({
+          ...t,
+          account_name:
+            accounts.find((a) => a.id === t.account_id)?.name ||
+            "Unknown Account",
+          category_name:
+            categories.find((c) => c.id === t.category_id)?.name ||
+            "Uncategorized",
+          category_type: categories.find((c) => c.id === t.category_id)?.type,
+        }));
+
+        setAllTransactions(mappedTransactions);
+        setTransactions(mappedTransactions);
       }
     } catch (error) {
       console.error("Unexpected error loading transactions:", error);
@@ -131,7 +142,7 @@ export default function TransactionsPage() {
         setGoals(goalsRes.goals);
       }
 
-      // After loading related data, reload transactions to get updated info
+      // After loading related data, reload transactions to map names properly
       if (family.id) {
         loadTransactions();
       }
